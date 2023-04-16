@@ -137,6 +137,7 @@ void heat_pump_uart_event_task(void *pvParameters) {
                             ESP_LOGW(TAG, "Failed to give update state mutex");
                         }
                         if (xQueueReceive(heatpump->response_queue, send_buf, 0)) {
+#if 0
                             ESP_LOGD(TAG, "Now, handling a pending frame txmit");
                             // This causes us to wait until 100 ms have passed since we read wakeTime, so that we account for the processReceivedFrame(). It also allows other tasks to use the core in the meantime because it suspends instead of busy-waiting.
                             vTaskDelayUntil(&wakeTime, pdMS_TO_TICKS(100));
@@ -152,6 +153,7 @@ void heat_pump_uart_event_task(void *pvParameters) {
                             if (!xSemaphoreGive(heatpump->updateStateMutex)) {
                                 ESP_LOGW(TAG, "Failed to give update state mutex");
                             }
+#endif
                         }
                     }
                     break;
