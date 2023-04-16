@@ -1,0 +1,146 @@
+substitutions:
+  name: fujitsu_controller
+  device_name: fujitsu_controller
+  friendly_name: Fujitsu Unit
+
+esphome:
+  name: ${device_name}
+  on_boot:
+    priority: -100
+    then:
+      - switch.turn_off: enable_fuji_comms
+
+esp32:
+  board: esp32-poe-iso
+  #  framework:
+  #    type: esp-idf
+  #    version: recommended
+
+#packages:
+  #irk_locator: !include irk_locator.yaml
+  #  ld2410_provisioning: !include ld2410ble_mac_discovery.yaml
+
+# Enable Home Assistant API
+api:
+
+external_components:
+  - source: github://ayufan/esphome-components
+#- source: github://FujiHeatPump/esphome-fujitsu@proper-component
+  - source:
+      type: local
+      path: components
+
+sensor:    
+  - platform: uptime
+    name: "${friendly_name} Uptime"
+    id: "${device_name}_uptime"
+    update_interval: 60s
+
+
+memory: # from ayufan/esphome-components; periodically prints free memory
+
+text_sensor:
+  - platform: version
+    name: "${friendly_name} ESPHome Version"
+    id: "${device_name}_esphome_version"
+
+button:
+  - platform: restart
+    name: Restart device
+    id: restart_internal
+    entity_category: config 
+  - platform: safe_mode
+    name: Safe Mode Boot
+    entity_category: diagnostic
+      #  - platform: template
+      #    name: Connect Fuji serial
+      #    entity_category: config 
+      #    on_press:
+      #      then:
+      #        - lambda: |-
+      #            id(fujipump).late_start();
+
+
+# Enable logging
+logger:
+  level: DEBUG
+  #level: VERY_VERBOSE
+  #logs:
+    #    sensor: INFO
+    #local_irk: INFO
+  #   api.service: DEBUG
+  #   esp32_ble_tracker: DEBUG
+  #   bluetooth_proxy: debug
+    # component: debug
+
+
+ota:
+  password: "d47e210fa0f54d1f833874666b1955eb"
+
+#esp32_ble_tracker:
+#  scan_parameters:
+#    # interval: 1000ms
+#    # window: 100ms
+#    active: false
+
+ethernet:
+  type: LAN8720
+  mdc_pin: GPIO23
+  mdio_pin: GPIO18
+  clk_mode: GPIO17_OUT
+  phy_addr: 0
+  power_pin: GPIO12
+  manual_ip:
+    static_ip: 192.168.20.70
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+  use_address: 192.168.20.70
+
+esp32_touch:
+# setup_mode: true
+
+binary_sensor:
+#  - platform: esp32_touch
+#    name: "Button 1"
+#    pin: GPIO15
+#    threshold: 400
+   - platform: esp32_touch
+     name: "Button 2"
+     pin: GPIO32
+     threshold: 400
+   - platform: esp32_touch
+     name: "Button 3"
+     pin: GPIO33
+     threshold: 400
+   - platform: status
+     name: "${device_name} Status"
+
+light:
+  - platform: fastled_clockless
+    rgb_order: GRB
+    chipset: SK6812
+    pin: GPIO1
+    num_leds: 1
+    name: "Indicator LED"
+    effects:
+      - pulse:
+
+switch:
+  - platform: template
+    name: "Enable fujitsu comms"
+    id: enable_fuji_comms
+    entity_category: diagnostic
+    optimistic: True
+
+#wifi:
+#  ssid: 74ax4k
+#  password: twosigma
+
+climate:
+- platform: fujitsu_heat_pump
+  id: fujipump
+  name: My Fujitsu Heat Pump
+  tx_pin: GPIO13
+  rx_pin: GPIO14
+  master: true
+  enable_communication: enable_fuji_comms
