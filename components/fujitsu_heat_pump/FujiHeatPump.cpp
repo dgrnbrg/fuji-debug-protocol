@@ -215,7 +215,7 @@ void FujiHeatPump::connect(uart_port_t uart_port, bool secondary, int rxPin, int
             return;
         }
     }
-    rc = uart_driver_install(uart_port, 2048, 2048, 20, &this->uart_queue, 0);
+    rc = uart_driver_install(uart_port, 4096, 2048, 20, &this->uart_queue, 0);
     if (rc != 0) {
         ESP_LOGW(TAG, "Failed to install uart driver");
         return;
