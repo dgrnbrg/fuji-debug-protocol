@@ -264,8 +264,8 @@ void FujiHeatPump::connect(uart_port_t uart_port, bool secondary, int rxPin, int
 }
 
 void FujiHeatPump::printFrame(byte buf[kFrameSize], FujiFrame ff) {
-    ESP_LOGD(TAG, "%X %X %X %X %X %X %X %X  ", buf[0], buf[1], buf[2],
-             buf[3], buf[4], buf[5], buf[6], buf[7]);
+    ESP_LOGD(TAG, "%02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX",
+        buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7]);
     ESP_LOGD(
         TAG,
         " mSrc: %d mDst: %d mType: %d write: %d login: %d unknown: %d onOff: "
