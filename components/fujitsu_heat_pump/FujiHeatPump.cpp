@@ -113,9 +113,6 @@ void heat_pump_uart_event_task(void *pvParameters) {
     while (true) {
         if(xQueueReceive(heatpump->uart_queue, (void * )&event, pdMS_TO_TICKS(1000))) {
             ESP_LOGI(TAG, "messages sent so far: %d", msgsSent);
-            size_t x;
-            uart_get_buffered_data_len(heatpump->uart_port, &x);
-            ESP_LOGI(TAG, "[BUFFER SIZE]: %d", x);
             switch(event.type) {
 
                 //Event of UART receving data
@@ -123,7 +120,18 @@ void heat_pump_uart_event_task(void *pvParameters) {
                   other types of events. If we take too much time on data event, the queue might
                   be full.*/
                 case UART_DATA:
+                    size_t bufferLen;
+
                     wakeTime = xTaskGetTickCount();
+
+                    uart_get_buffered_data_len(heatpump->uart_port, &bufferLen);
+                    ESP_LOGI(TAG, "[BUFFER LENGTH]: %d", bufferLen);
+                    bufferLen %= kFrameSize;
+                    if (bufferLen) {
+                        ESP_LOGD(TAG, "Discarding %d bytes", bufferLen);
+                        uart_read_bytes(heatpump->uart_port, heatpump->readBuf, bufferLen, portMAX_DELAY);
+                    }
+
                     ESP_LOGI(TAG, "[UART DATA]: %d", event.size);
                     for (auto i = 0; i < event.size / kFrameSize; i++) {
                         if (kFrameSize != uart_read_bytes(heatpump->uart_port, heatpump->readBuf, kFrameSize, portMAX_DELAY)) {
