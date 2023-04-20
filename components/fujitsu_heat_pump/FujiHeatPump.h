@@ -12,6 +12,8 @@ typedef uint8_t byte;
 namespace esphome {
 namespace fujitsu {
 
+const size_t kFrameSize = 8;
+
 const byte kModeIndex = 3;
 const byte kModeMask = 0b00001110;
 const byte kModeOffset = 1;
@@ -81,7 +83,7 @@ typedef struct FujiFrames {
 
 class FujiHeatPump {
    private:
-    byte readBuf[8];
+    byte readBuf[kFrameSize];
 
     byte controllerAddress;
     bool controllerIsPrimary = true;
@@ -97,7 +99,7 @@ class FujiHeatPump {
 
     FujiFrame decodeFrame();
     void encodeFrame(FujiFrame ff, byte* writeBuf);
-    void printFrame(byte buf[8], FujiFrame ff);
+    void printFrame(byte buf[kFrameSize], FujiFrame ff);
 
     QueueHandle_t uart_queue;
     uart_port_t uart_port;
