@@ -113,6 +113,9 @@ void heat_pump_uart_event_task(void *pvParameters) {
     while (true) {
         if(xQueueReceive(heatpump->uart_queue, (void * )&event, pdMS_TO_TICKS(1000))) {
             ESP_LOGI(TAG, "messages sent so far: %d", msgsSent);
+            size_t x;
+            uart_get_buffered_data_len(heatpump->uart_port, &x);
+            ESP_LOGI(TAG, "[BUFFER SIZE]: %d", x);
             switch(event.type) {
 
                 //Event of UART receving data
@@ -122,38 +125,41 @@ void heat_pump_uart_event_task(void *pvParameters) {
                 case UART_DATA:
                     wakeTime = xTaskGetTickCount();
                     ESP_LOGI(TAG, "[UART DATA]: %d", event.size);
-                    if (kFrameSize != uart_read_bytes(heatpump->uart_port, heatpump->readBuf, kFrameSize, portMAX_DELAY)) {
-                        ESP_LOGW(TAG, "Failed to read state update as expected");
-                    } else {
-                        heatpump->processReceivedFrame();
-                        if (!xSemaphoreTake(heatpump->updateStateMutex, portMAX_DELAY)) {
-                            ESP_LOGW(TAG, "Failed to take update state mutex");
+                    for (auto i = 0; i < event.size / kFrameSize; i++) {
+                        if (kFrameSize != uart_read_bytes(heatpump->uart_port, heatpump->readBuf, kFrameSize, portMAX_DELAY)) {
+                            ESP_LOGW(TAG, "Failed to read state update as expected");
                         }
-                        if (heatpump->updateFields == 0) {
-                            // We only should update HA if we don't have a pending update
-                            xQueueOverwrite(heatpump->state_dropbox, &heatpump->currentState);
-                        }
-                        if (!xSemaphoreGive(heatpump->updateStateMutex)) {
-                            ESP_LOGW(TAG, "Failed to give update state mutex");
-                        }
-                        if (xQueueReceive(heatpump->response_queue, send_buf, 0)) {
-#if 0
-                            ESP_LOGD(TAG, "Now, handling a pending frame txmit");
-                            // This causes us to wait until 100 ms have passed since we read wakeTime, so that we account for the processReceivedFrame(). It also allows other tasks to use the core in the meantime because it suspends instead of busy-waiting.
-                            vTaskDelayUntil(&wakeTime, pdMS_TO_TICKS(100));
-                            if (uart_write_bytes(heatpump->uart_port, (const char*) send_buf, kFrameSize) != kFrameSize) {
-                                ESP_LOGW(TAG, "Failed to write state update as expected");
-                            }
-                            msgsSent++;
-                            ESP_LOGD(TAG, "Completed txmit");
+                        else {
+                            heatpump->processReceivedFrame();
                             if (!xSemaphoreTake(heatpump->updateStateMutex, portMAX_DELAY)) {
                                 ESP_LOGW(TAG, "Failed to take update state mutex");
                             }
-                            heatpump->updateFields = 0;
+                            if (heatpump->updateFields == 0) {
+                                // We only should update HA if we don't have a pending update
+                                xQueueOverwrite(heatpump->state_dropbox, &heatpump->currentState);
+                            }
                             if (!xSemaphoreGive(heatpump->updateStateMutex)) {
                                 ESP_LOGW(TAG, "Failed to give update state mutex");
                             }
+                            if (xQueueReceive(heatpump->response_queue, send_buf, 0)) {
+#if 0
+                                ESP_LOGD(TAG, "Now, handling a pending frame txmit");
+                                // This causes us to wait until 100 ms have passed since we read wakeTime, so that we account for the processReceivedFrame(). It also allows other tasks to use the core in the meantime because it suspends instead of busy-waiting.
+                                vTaskDelayUntil(&wakeTime, pdMS_TO_TICKS(100));
+                                if (uart_write_bytes(heatpump->uart_port, (const char*)send_buf, kFrameSize) != kFrameSize) {
+                                    ESP_LOGW(TAG, "Failed to write state update as expected");
+                                }
+                                msgsSent++;
+                                ESP_LOGD(TAG, "Completed txmit");
+                                if (!xSemaphoreTake(heatpump->updateStateMutex, portMAX_DELAY)) {
+                                    ESP_LOGW(TAG, "Failed to take update state mutex");
+                                }
+                                heatpump->updateFields = 0;
+                                if (!xSemaphoreGive(heatpump->updateStateMutex)) {
+                                    ESP_LOGW(TAG, "Failed to give update state mutex");
+                                }
 #endif
+                            }
                         }
                     }
                     break;
@@ -215,7 +221,7 @@ void FujiHeatPump::connect(uart_port_t uart_port, bool secondary, int rxPin, int
             return;
         }
     }
-    rc = uart_driver_install(uart_port, 4096, 2048, 20, &this->uart_queue, 0);
+    rc = uart_driver_install(uart_port, 2048, 2048, 20, &this->uart_queue, 0);
     if (rc != 0) {
         ESP_LOGW(TAG, "Failed to install uart driver");
         return;
